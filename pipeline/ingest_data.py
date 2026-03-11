@@ -5,6 +5,7 @@
 import pandas as pd
 from sqlalchemy import create_engine
 from tqdm.auto import tqdm
+import click  # Ajout de l'importation pour Click
 
 
 
@@ -43,20 +44,20 @@ parse_dates = [
 
 
 
-def run():
-    pg_user = "root"
-    pg_pass = "root"
-    pg_host = "localhost"
-    pg_port = "5432"
-    pg_db = "ny_taxi"
-    target_table = "yellow_taxi_data"
-
-    year = 2021
-    month = 1
-    chunksize = 100000
-    prefix ='https://github.com/DataTalksClub/nyc-tlc-data/releases/download/yellow'
-    url=f'{prefix}/yellow_tripdata_{year}-{month:02d}.csv.gz'
-    engine = create_engine(f'postgresql+psycopg://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}')
+@click.command()
+@click.option('--pg_user', default='root', help='Utilisateur PostgreSQL')
+@click.option('--pg_pass', default='root', help='Mot de passe PostgreSQL')
+@click.option('--pg_host', default='localhost', help='Hôte PostgreSQL')
+@click.option('--pg_port', default='5432', help='Port PostgreSQL')
+@click.option('--pg_db', default='ny_taxi', help='Base de données PostgreSQL')
+@click.option('--target_table', default='yellow_taxi_data', help='Table cible')
+@click.option('--year', default=2021, type=int, help='Année des données')
+@click.option('--month', default=1, type=int, help='Mois des données')
+@click.option('--chunksize', default=100000, type=int, help='Taille des chunks')
+def run(pg_user, pg_pass, pg_host, pg_port, pg_db, target_table, year, month, chunksize):
+    prefix = 'https://github.com/DataTalksClub/nyc-tlc-data/releases/download/yellow'
+    url = f'{prefix}/yellow_tripdata_{year}-{month:02d}.csv.gz'
+    engine = create_engine(f'postgresql+psycopg2://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}')
     df_iter = pd.read_csv(
         url,
         dtype=dtype,
@@ -65,28 +66,20 @@ def run():
         chunksize=chunksize,
     )
 
-
-
-
-
-
-    first=True
-    for df_chunk in tqdm(df_iter) :
+    first = True
+    for df_chunk in tqdm(df_iter):
         if first:
             df_chunk.head(n=0).to_sql(
-                name='target_table',
+                name=target_table,  # Correction : utiliser la variable au lieu de la chaîne
                 con=engine,
                 if_exists='replace'
             )
-            first=False
+            first = False
         df_chunk.to_sql(
-            name='target_table',
+            name=target_table,  # Correction : utiliser la variable au lieu de la chaîne
             con=engine,
             if_exists='append'
         )
-
-
-
 
 if __name__ == "__main__":
     run()
